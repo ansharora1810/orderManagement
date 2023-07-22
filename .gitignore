@@ -1,0 +1,8 @@
+
+.idea/*
+bin/*
+lib/*
+
+.Python
+
+.DS_Store
