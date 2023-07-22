@@ -19,5 +19,6 @@ def handler(event, _):
     user_id = ddb_user.user_id
     ddb_user.save()
     return {
+        "success": True,
         "user_id": user_id
     }

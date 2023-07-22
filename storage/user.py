@@ -9,7 +9,7 @@ from model.user import User
 
 class DDBUser(Model):
     class Meta:
-        table_name = DynamoDBConstants.PRODUCT_TABLE
+        table_name = DynamoDBConstants.USER_TABLE
         region = DynamoDBConstants.REGION
 
     user_id = UnicodeAttribute(hash_key=True, default=str(uuid.uuid4))
