@@ -322,6 +322,164 @@ Resources:
       Principal: 'apigateway.amazonaws.com'
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/*'
 
+  # Enable CORS
+
+  RegisterUserOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref RegisterUserApiResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              "method.response.header.Access-Control-Allow-Methods": "'*'"
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          "application/json": "{\"statusCode\": 200}"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+          ResponseModels:
+            "application/json": "Empty"
+
+#  RegisterUserOptionsResponse:
+#    Type: AWS::ApiGateway::MethodResponse
+#    Properties:
+#      RestApiId: !Ref MyApi
+#      ResourceId: !Ref RegisterUserApiResource
+#      HttpMethod: OPTIONS
+#      StatusCode: 200
+#      ResponseParameters:
+#        "method.response.header.Access-Control-Allow-Headers": true
+#        "method.response.header.Access-Control-Allow-Methods": true
+#        "method.response.header.Access-Control-Allow-Origin": true
+
+  PlaceOrderOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref PlaceOrderApiResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              "method.response.header.Access-Control-Allow-Methods": "'*'"
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          "application/json": "{\"statusCode\": 200}"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+          ResponseModels:
+            "application/json": "Empty"
+
+#  PlaceOrderOptionsResponse:
+#    Type: AWS::ApiGateway::MethodResponse
+#    Properties:
+#      RestApiId: !Ref MyApi
+#      ResourceId: !Ref PlaceOrderApiResource
+#      HttpMethod: OPTIONS
+#      StatusCode: 200
+#      ResponseParameters:
+#        "method.response.header.Access-Control-Allow-Headers": true
+#        "method.response.header.Access-Control-Allow-Methods": true
+#        "method.response.header.Access-Control-Allow-Origin": true
+
+  GetProductsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref GetProductsApiResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              "method.response.header.Access-Control-Allow-Methods": "'*'"
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          "application/json": "{\"statusCode\": 200}"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+          ResponseModels:
+            "application/json": "Empty"
+
+#  GetProductsOptionsResponse:
+#    Type: AWS::ApiGateway::MethodResponse
+#    Properties:
+#      RestApiId: !Ref MyApi
+#      ResourceId: !Ref GetProductsApiResource
+#      HttpMethod: OPTIONS
+#      StatusCode: 200
+#      ResponseParameters:
+#        "method.response.header.Access-Control-Allow-Headers": true
+#        "method.response.header.Access-Control-Allow-Methods": true
+#        "method.response.header.Access-Control-Allow-Origin": true
+
+  UpdateProductsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref UpdateProductsApiResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              "method.response.header.Access-Control-Allow-Methods": "'*'"
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          "application/json": "{\"statusCode\": 200}"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+          ResponseModels:
+            "application/json": "Empty"
+
+#  UpdateProductsOptionsResponse:
+#    Type: AWS::ApiGateway::MethodResponse
+#    Properties:
+#      RestApiId: !Ref MyApi
+#      ResourceId: !Ref UpdateProductsApiResource
+#      HttpMethod: OPTIONS
+#      StatusCode: 200
+#      ResponseParameters:
+#        "method.response.header.Access-Control-Allow-Headers": true
+#        "method.response.header.Access-Control-Allow-Methods": true
+#        "method.response.header.Access-Control-Allow-Origin": true
+
   # EC2 for frontend
 
   MyEC2Instance:
@@ -347,8 +505,9 @@ Resources:
           npm install -g serve
 
           # Clone your ReactJS application from the repository
-          git clone https://github.com/ansharora1810/order_products
-          cd order_products
+          git clone https://gitlab-ci-token:glpat-kPyLs4iJAPak3bpkk42P@git.cs.dal.ca/asagar/ordermanagementui.git /home/ec2-user/app
+          sudo chown -R ec2-user:ec2-user /home/ec2-user/app
+          cd app
 
           # Install the required Node.js packages for your ReactJS application
           npm install
