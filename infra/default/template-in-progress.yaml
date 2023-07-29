@@ -144,6 +144,20 @@ Resources:
       Protocol: 'sqs'
       Endpoint: !GetAtt SendEmailQueue.Arn
 
+  SendEmailLambdaQueueMapping:
+    Type: 'AWS::Lambda::EventSourceMapping'
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !GetAtt SendEmailQueue.Arn
+      FunctionName: !Ref SendEmailLambda
+
+  UpdateProductsLambdaQueueMapping:
+    Type: 'AWS::Lambda::EventSourceMapping'
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !GetAtt UpdateProductsQueue.Arn
+      FunctionName: !Ref UpdateProductsLambda
+
   UpdateProductsQueuePolicy:
     Type: 'AWS::SQS::QueuePolicy'
     Properties:
@@ -315,6 +329,8 @@ Resources:
     Properties:
       ImageId: 'ami-00970f57473724c10'
       InstanceType: 't2.micro'
+      SecurityGroups:
+        - !Ref MySecurityGroup
       KeyName: Ansh-Pair
       UserData:
         Fn::Base64: !Sub |
@@ -328,7 +344,7 @@ Resources:
           nvm use 14
 
           # Install a simple web server (serve) to serve the React app
-          sudo npm install -g serve
+          npm install -g serve
 
           # Clone your ReactJS application from the repository
           git clone https://github.com/ansharora1810/order_products
@@ -341,4 +357,18 @@ Resources:
           npm run build
 
           # Start the server to serve the React app on port 80
-          sudo serve -s build -l 80
+          serve -s build -l 3000
+
+  MySecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Allow all inbound and outbound traffic for TCP and HTTPS'
+      SecurityGroupIngress:
+        - CidrIp: '0.0.0.0/0'  # Allow all incoming traffic
+          IpProtocol: 'tcp'
+          FromPort: 0
+          ToPort: 65535
+        - CidrIp: '0.0.0.0/0'  # Allow all incoming HTTPS traffic
+          IpProtocol: 'tcp'
+          FromPort: 443
+          ToPort: 443
