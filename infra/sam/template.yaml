@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: 'Lambda function to save entries in DynamoDB table'
+
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'POST, GET'"
+      AllowHeaders: "'Content-Type'"
+      AllowOrigin: "'*'"  # Replace '*' with the specific origin you want to allow (e.g., 'https://example.com')
+
+Parameters:
+  UserTableName:
+    Type: String
+    Default: 'User'
+    Description: 'Name of the DynamoDB table to store users'
+
+  ProductTableName:
+    Type: String
+    Default: 'Products'
+    Description: 'Name of the DynamoDB table to store products'
+
+  OrderTableName:
+    Type: String
+    Default: 'Orders'
+    Description: 'Name of the DynamoDB table to store products'
+
+Resources:
+  UserTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref UserTableName
+      AttributeDefinitions:
+        - AttributeName: 'user_id'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'user_id'
+          KeyType: 'HASH'
+      BillingMode: PAY_PER_REQUEST
+
+  ProductTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref ProductTableName
+      AttributeDefinitions:
+        - AttributeName: 'product_name'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'product_name'
+          KeyType: 'HASH'
+      BillingMode: PAY_PER_REQUEST
+
+  OrderTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref OrderTableName
+      AttributeDefinitions:
+        - AttributeName: 'order_id'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'order_id'
+          KeyType: 'HASH'
+      BillingMode: PAY_PER_REQUEST
+
+  RegisterUserLambda:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: 'RegisterUserLambda'
+      Runtime: 'python3.9'
+      CodeUri: '../src/'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: register_user.handler
+      Timeout: 10
+      Policies:
+        - AWSLambdaDynamoDBExecutionRole
+      Events:
+        MyApiEvent:
+          Type: Api
+          Properties:
+            Path: /register-user
+            Method: POST
+
+  SendEmailLambda:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: 'SendEmailLambda'
+      Runtime: 'python3.9'
+      CodeUri: '../src/'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: send_email.handler
+      Timeout: 10
+      Policies:
+        - AWSLambdaDynamoDBExecutionRole
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SendEmailQueue.Arn
+
+  UpdateProductsLambda:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: 'UpdateProductsLambda'
+      Runtime: 'python3.9'
+      CodeUri: '../src/'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: update_products.handler
+      Timeout: 10
+      Policies:
+        - AWSLambdaDynamoDBExecutionRole
+      Events:
+        MyApiEvent:
+          Type: Api
+          Properties:
+            Path: /update-products
+            Method: POST
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt UpdateProductsQueue.Arn
+
+  GetProductsLambda:  # New Lambda Function for getting all contents from the Products DynamoDB table
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: 'GetProductsLambda'
+      Runtime: 'python3.9'
+      CodeUri: '../src/'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: get_products.handler  # Replace 'get_products.handler' with the actual handler function name for getting products from DynamoDB
+      Timeout: 10
+      Policies:
+        - AWSLambdaDynamoDBExecutionRole
+      Events:
+        MyApiEvent:
+          Type: Api
+          Properties:
+            Path: /get-products
+            Method: GET  # This Lambda will be triggered by an HTTP GET request
+
+  PlaceOrderLambda:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: 'PlaceOrderLambda'
+      Runtime: 'python3.9'
+      CodeUri: '../src/'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: place_order.handler
+      Timeout: 10
+      Policies:
+        - AWSLambdaDynamoDBExecutionRole
+        - PolicyName: SNSPublishPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sns:Publish'
+                Resource: 'arn:aws:sns:us-east-1:121724640456:OrderSNSTopic'
+      Events:
+        MyApiEvent:
+          Type: Api
+          Properties:
+            Path: /place-order
+            Method: POST
+
+  OrderSNSTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      DisplayName: 'Orders'
+      TopicName: 'Orders'
+
+  UpdateProductsQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: 'UpdateProductsQueue'
+
+  SendEmailQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: 'SendEmailQueue'
+
+  UpdateProductsSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref OrderSNSTopic
+      Protocol: 'sqs'
+      Endpoint: !GetAtt UpdateProductsQueue.Arn
+
+  SendEmailSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref OrderSNSTopic
+      Protocol: 'sqs'
+      Endpoint: !GetAtt SendEmailQueue.Arn
+
+  UpdateProductsQueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    Properties:
+      Queues:
+        - !Ref UpdateProductsQueue
+      PolicyDocument:
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'sns.amazonaws.com'
+            Action: 'sqs:SendMessage'
+            Resource: !GetAtt UpdateProductsQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref OrderSNSTopic
+
+  SendEmailQueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    Properties:
+      Queues:
+        - !Ref SendEmailQueue
+      PolicyDocument:
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'sns.amazonaws.com'
+            Action: 'sqs:SendMessage'
+            Resource: !GetAtt SendEmailQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref OrderSNSTopic

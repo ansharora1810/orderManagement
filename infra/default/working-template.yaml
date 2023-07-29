@@ -1,0 +1,309 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda function to save entries in DynamoDB table'
+
+Parameters:
+  UserTableName:
+    Type: String
+    Default: 'User'
+    Description: 'Name of the DynamoDB table to store users'
+
+  ProductTableName:
+    Type: String
+    Default: 'Products'
+    Description: 'Name of the DynamoDB table to store products'
+
+  OrderTableName:
+    Type: String
+    Default: 'Orders'
+    Description: 'Name of the DynamoDB table to store products'
+
+Resources:
+  UserTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref UserTableName
+      AttributeDefinitions:
+        - AttributeName: 'user_id'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'user_id'
+          KeyType: 'HASH'
+      BillingMode: PAY_PER_REQUEST
+
+  ProductTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref ProductTableName
+      AttributeDefinitions:
+        - AttributeName: 'product_name'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'product_name'
+          KeyType: 'HASH'
+      BillingMode: PAY_PER_REQUEST
+
+  OrderTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: !Ref OrderTableName
+      AttributeDefinitions:
+        - AttributeName: 'order_id'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'order_id'
+          KeyType: 'HASH'
+      BillingMode: PAY_PER_REQUEST
+
+  RegisterUserLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 'RegisterUserLambda'
+      Runtime: 'python3.9'
+      Code:
+        S3Bucket: ansh-code-bucket
+        S3Key: 'lambda-code.zip'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: register_user.handler
+      Timeout: 10
+
+  SendEmailLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 'SendEmailLambda'
+      Runtime: 'python3.9'
+      Code:
+        S3Bucket: ansh-code-bucket
+        S3Key: 'lambda-code.zip'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: send_email.handler
+      Timeout: 10
+
+  UpdateProductsLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 'UpdateProductsLambda'
+      Runtime: 'python3.9'
+      Code:
+        S3Bucket: ansh-code-bucket
+        S3Key: 'lambda-code.zip'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: update_products.handler
+      Timeout: 10
+
+  GetProductsLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 'GetProductsLambda'
+      Runtime: 'python3.9'
+      Code:
+        S3Bucket: ansh-code-bucket
+        S3Key: 'lambda-code.zip'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: get_products.handler
+      Timeout: 10
+
+  PlaceOrderLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 'PlaceOrderLambda'
+      Runtime: 'python3.9'
+      Code:
+        S3Bucket: ansh-code-bucket
+        S3Key: 'lambda-code.zip'
+      Role: 'arn:aws:iam::121724640456:role/LabRole'
+      Handler: place_order.handler
+      Timeout: 10
+
+  OrderSNSTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      DisplayName: 'Orders'
+      TopicName: 'Orders'
+
+  UpdateProductsQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: 'UpdateProductsQueue'
+
+  SendEmailQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: 'SendEmailQueue'
+
+  UpdateProductsSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref OrderSNSTopic
+      Protocol: 'sqs'
+      Endpoint: !GetAtt UpdateProductsQueue.Arn
+
+  SendEmailSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref OrderSNSTopic
+      Protocol: 'sqs'
+      Endpoint: !GetAtt SendEmailQueue.Arn
+
+  UpdateProductsQueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    Properties:
+      Queues:
+        - !Ref UpdateProductsQueue
+      PolicyDocument:
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'sns.amazonaws.com'
+            Action: 'sqs:SendMessage'
+            Resource: !GetAtt UpdateProductsQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref OrderSNSTopic
+
+  SendEmailQueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    Properties:
+      Queues:
+        - !Ref SendEmailQueue
+      PolicyDocument:
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'sns.amazonaws.com'
+            Action: 'sqs:SendMessage'
+            Resource: !GetAtt SendEmailQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref OrderSNSTopic
+
+  # Rest API
+  MyApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: 'MyApi'
+
+  RegisterUserApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref MyApi
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: 'register-user'
+
+  UpdateProductsApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref MyApi
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: 'update-products'
+
+  GetProductsApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref MyApi
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: 'get-products'
+
+  PlaceOrderApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref MyApi
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: 'place-order'
+
+  RegisterUserApiResourceMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref RegisterUserApiResource
+      HttpMethod: 'POST'
+      AuthorizationType: 'NONE'
+      Integration:
+        Type: 'AWS_PROXY'
+        IntegrationHttpMethod: 'POST'
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RegisterUserLambda.Arn}/invocations'
+
+  UpdateProductsApiResourceMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref UpdateProductsApiResource
+      HttpMethod: 'POST'
+      AuthorizationType: 'NONE'
+      Integration:
+        Type: 'AWS_PROXY'
+        IntegrationHttpMethod: 'POST'
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateProductsLambda.Arn}/invocations'
+
+  GetProductsApiResourceMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref GetProductsApiResource
+      HttpMethod: 'GET'
+      AuthorizationType: 'NONE'
+      Integration:
+        Type: 'AWS_PROXY'
+        IntegrationHttpMethod: 'POST'
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetProductsLambda.Arn}/invocations'
+
+  PlaceOrderApiResourceMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref PlaceOrderApiResource
+      HttpMethod: 'POST'
+      AuthorizationType: 'NONE'
+      Integration:
+        Type: 'AWS_PROXY'
+        IntegrationHttpMethod: 'POST'
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PlaceOrderLambda.Arn}/invocations'
+
+  RegisterUserApiDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    Properties:
+      RestApiId: !Ref MyApi
+    DependsOn:
+      - RegisterUserApiResourceMethod
+      - UpdateProductsApiResourceMethod
+      - GetProductsApiResourceMethod
+      - PlaceOrderApiResourceMethod
+
+  MyApiDeploymentStage:
+    Type: 'AWS::ApiGateway::Stage'
+    Properties:
+      RestApiId: !Ref MyApi
+      DeploymentId: !Ref RegisterUserApiDeployment
+      StageName: 'v1'
+
+  # Rest API Gateway Permissions
+  RegisterUserApiPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt RegisterUserLambda.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/*'
+
+  UpdateProductsApiPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt UpdateProductsLambda.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/*'
+
+  GetProductsApiPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt GetProductsLambda.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/*'
+
+  PlaceOrderApiPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt PlaceOrderLambda.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/*'
